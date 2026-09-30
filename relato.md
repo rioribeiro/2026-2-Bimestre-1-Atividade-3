@@ -186,7 +186,7 @@ func Principal() {
 }
 ```
 
-## Comportamento dos Processos Isolados
+### Comportamento dos Processos Isolados
 
 Ao contrário do cenário com Goroutines, o processo sequencial_app não consegue acessar a memória RAM do processo exemplo_main. O SO impede rigorosamente a leitura cruzada de memória entre processos sem mecanismos explícitos de IPC (Inter-Process Communication).
 
@@ -200,6 +200,7 @@ sequencial-1           | finalizou
 
 A execução monothread dentro do processo garante que a produção termine totalmente antes do início do consumo, sendo 100% determinística.
 
+## Comunicação entre tarefas em processos diferentes em computadores diferentes
 
 ### Arquitetura de Rede e Contêineres
 
