@@ -14,7 +14,24 @@ O grupo de trabalho foi formado por Rio Ribeiro, João Victor, Wheverton Filho.
 
 A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
 
+### Arquitetura de Arquivos
+```text
+src/
+├── Dockerfile
+├── docker-compose.yml
+└── go/
+    ├── go.mod
+    ├── sequencial/
+    │   └── sequencial.go       <-- Pacote reusável
+    ├── exemplo_main/
+    │   └── main.go             <-- Executável de teste
+    ├── sequencial_app/
+    │   └── main.go             <-- Executável sequencial
+    └── produtor_consumidor/
+        └── main.go             <-- Executável concorrente (Goroutines)
+
 O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
+```
 
 ```
 # Dockerfile
@@ -131,7 +148,56 @@ Problemas na execução e soluções:
 
 ### Comunicação entre tarefas em processos diferentes no mesmo computador
 
-FIXME
+Quando executamos os programas exemplo_main, sequencial_app e produtor_consumidor como aplicações independentes, o Sistema Operacional cria processos distintos na tabela de processos, cada um com seu próprio identificador (PID) e espaço de endereçamento protegido pela MMU (Unidade de Gerenciamento de Memória).
+
+No nosso projeto, a modularização foi feita via pacote sequencial (src/go/sequencial/sequencial.go), permitindo que diferentes processos utilizem a mesma lógica compilada:
+
+```
+package sequencial
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func ProduzirDados() []int {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	dados := make([]int, 100)
+	for i := 0; i < 100; i++ {
+		dados[i] = r.Intn(111)
+	}
+	return dados
+}
+
+func ConsumirDados(dados []int) {
+	resultado := 0
+	for _, v := range dados {
+		resultado += v
+	}
+	fmt.Printf("recebeu -> %d\n", resultado)
+}
+
+func Principal() {
+	fmt.Println("iniciou")
+	dados := ProduzirDados()
+	ConsumirDados(dados)
+	fmt.Println("finalizou")
+}
+```
+
+# Comportamento dos Processos Isolados
+
+Ao contrário do cenário com Goroutines, o processo sequencial_app não consegue acessar a memória RAM do processo exemplo_main. O SO impede rigorosamente a leitura cruzada de memória entre processos sem mecanismos explícitos de IPC (Inter-Process Communication).
+
+# Saída da Execução Sequencial no Container Docker
+
+sequencial-1           | iniciou
+sequencial-1           | recebeu -> 5786
+sequencial-1           | finalizou
+
+A execução monothread dentro do processo garante que a produção termine totalmente antes do início do consumo, sendo 100% determinística.
+
 > texto explicando o código
 > mostrar o código completo
 
