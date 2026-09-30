@@ -12,11 +12,7 @@ O grupo de trabalho foi formado por Rio Ribeiro, João Victor, Wheverton Filho.
 
 ### Informações gerais
 
-> qual o objetivo de comunicação entre tarefas?
-
 A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
-
-> explicar porque usar docker nesse trabalho.
 
 O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
 > qual a configuração do docker?
@@ -55,9 +51,64 @@ services:
 
 ### Comunicação entre tarefas com linhas de execução no mesmo processo
 
-FIXME
-> texto explicando o código
-> mostrar o código completo
+Em Go, linhas de execução no mesmo processo são gerenciadas através de Goroutines (threads leves gerenciadas pelo runtime da linguagem). No arquivo src/go/produtor_consumidor/main.go, implementamos a comunicação entre o Produtor e o Consumidor através de uma variável global compartilhada (dados []int) e controlamos a conclusão das Goroutines via barreira de sincronização sync.WaitGroup.
+```
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"sync"
+	"time"
+)
+
+var (
+	dados []int
+	wg    sync.WaitGroup
+)
+
+func produzirDados() {
+	defer wg.Done()
+	fmt.Println("# produzir - iniciado")
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	novosDados := make([]int, 100)
+	for i := 0; i < 100; i++ {
+		novosDados[i] = r.Intn(111)
+	}
+	dados = novosDados
+
+	fmt.Printf("# produzir %v\n", dados)
+	fmt.Println("# produzir - terminado")
+}
+
+func consumirDados() {
+	defer wg.Done()
+	fmt.Println("### consumir - iniciado")
+	fmt.Printf("### dados -> %v\n", dados)
+
+	soma := 0
+	for _, v := range dados {
+		soma += v
+	}
+
+	fmt.Printf("### resultado -> %d\n", soma)
+	fmt.Println("### consumir - terminado")
+}
+
+func main() {
+	fmt.Println("iniciou")
+
+	wg.Add(2)
+	go produzirDados()
+	go consumirDados()
+
+	wg.Wait()
+	fmt.Println("finalizou")
+}
+```
+
+
 
 FIXME
 > explicar como foi executado
