@@ -15,7 +15,7 @@ O grupo de trabalho foi formado por Rio Ribeiro, João Victor, Wheverton Filho.
 A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
 
 O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
-> qual a configuração do docker?
+
 ```
 # Dockerfile
 
@@ -108,15 +108,26 @@ func main() {
 }
 ```
 
+A execução foi realizada via terminal dentro do diretório do módulo Go (src/go):
+```go run ./produtor_consumidor```
+Saída obtida no terminal:
 
+```
+Iniciou
+### consumir - iniciado
+### dados -> []
+### resultado -> 0
+### consumir - terminado
+# produzir - iniciado
+# produzir 
+# produzir - terminado
+finalizou
+```
 
-FIXME
-> explicar como foi executado
-> mostrar as saídas do terminal
-> mostrar as saídas do terminal
+Problemas na execução e soluções:
 
-FIXME
-> se houve problema na execução, enumerar os problemas e suas respectivas soluções
+- Problema: Ocorreu uma Condição de Corrida (Race Condition). Como não havia mecanismos de exclusão mútua na memória compartilhada dados, a Goroutine consumirDados() executou antes que produzirDados() preenchesse o vetor. O consumidor leu um vetor vazio ([]) e resultou em soma 0.
+- Solução: Para evitar a condição de corrida no Go, o ideal é substituir a memória compartilhada global por Canais (chan []int) para transmissão síncrona de dados entre as Goroutines, ou aplicar um sync.Mutex ao redor do acesso à variável dados.
 
 ### Comunicação entre tarefas em processos diferentes no mesmo computador
 
