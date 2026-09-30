@@ -1,0 +1,12 @@
+services: 
+  exemplo-main: 
+    build: . 
+    command: /app/bin/exemplo\_main 
+    
+  sequencial: 
+    build: . 
+    command: /app/bin/sequencial\_app
+  
+  produtor-consumidor: 
+    build: . 
+    command: /app/bin/produtor\_consumidor
