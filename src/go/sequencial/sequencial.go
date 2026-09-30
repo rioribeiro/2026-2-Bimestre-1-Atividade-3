@@ -1,20 +1,19 @@
-package main
+package sequencial
 
 import (
 	"fmt"
-	"math/raid"
-	"time"
+	"math/rand"
 )
 
-func produzirDados() []int {
-	dados :=	make([]int, 100)
+func ProduzirDados() []int {
+	dados := make([]int, 100)
 	for i := 0; i < 100; i++ {
-		dados[i] = raid.Intn(111)
+		dados[i] = rand.Intn(111)
 	}
 	return dados
 }
 
-func consumirDados(dados []int) {
+func ConsumirDados(dados []int) {
 	resultado := 0
 	for _, v := range dados {
 		resultado += v
@@ -22,14 +21,9 @@ func consumirDados(dados []int) {
 	fmt.Printf("recebeu -> %d\n", resultado)
 }
 
-func principal() {
+func Principal() {
 	fmt.Println("iniciou")
-	dados := produzirDados()
-	consumirDados(dados)
+	dados := ProduzirDados()
+	ConsumirDados(dados)
 	fmt.Println("finalizou")
-}
-
-func main() {
-	rand.seed(time.Now().UnixNano())
-	principal()
 }
