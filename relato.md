@@ -66,7 +66,7 @@ services:
     command: /app/bin/produtor\_consumidor
 ```
 
-### Comunicação entre tarefas com linhas de execução no mesmo processo
+## Comunicação entre tarefas com linhas de execução no mesmo processo
 
 Em Go, linhas de execução no mesmo processo são gerenciadas através de Goroutines (threads leves gerenciadas pelo runtime da linguagem). No arquivo src/go/produtor_consumidor/main.go, implementamos a comunicação entre o Produtor e o Consumidor através de uma variável global compartilhada (dados []int) e controlamos a conclusão das Goroutines via barreira de sincronização sync.WaitGroup.
 ```
@@ -146,7 +146,7 @@ Problemas na execução e soluções:
 - Problema: Ocorreu uma Condição de Corrida (Race Condition). Como não havia mecanismos de exclusão mútua na memória compartilhada dados, a Goroutine consumirDados() executou antes que produzirDados() preenchesse o vetor. O consumidor leu um vetor vazio ([]) e resultou em soma 0.
 - Solução: Para evitar a condição de corrida no Go, o ideal é substituir a memória compartilhada global por Canais (chan []int) para transmissão síncrona de dados entre as Goroutines, ou aplicar um sync.Mutex ao redor do acesso à variável dados.
 
-### Comunicação entre tarefas em processos diferentes no mesmo computador
+## Comunicação entre tarefas em processos diferentes no mesmo computador
 
 Quando executamos os programas exemplo_main, sequencial_app e produtor_consumidor como aplicações independentes, o Sistema Operacional cria processos distintos na tabela de processos, cada um com seu próprio identificador (PID) e espaço de endereçamento protegido pela MMU (Unidade de Gerenciamento de Memória).
 
@@ -186,7 +186,7 @@ func Principal() {
 }
 ```
 
-### Comportamento dos Processos Isolados
+## Comportamento dos Processos Isolados
 
 Ao contrário do cenário com Goroutines, o processo sequencial_app não consegue acessar a memória RAM do processo exemplo_main. O SO impede rigorosamente a leitura cruzada de memória entre processos sem mecanismos explícitos de IPC (Inter-Process Communication).
 
@@ -217,6 +217,13 @@ Cada serviço (exemplo-main, sequencial, produtor-consumidor) roda em seu própr
 Para que tarefas em máquinas distintas troquem informações, a comunicação deve obrigatoriamente utilizar Sockets TCP/IP ou protocolos de aplicação sobre a placa de rede.
 
 No Docker Compose, a resolução de nomes via DNS interno permite que contêineres troquem pacotes de rede utilizando a ponte de rede do host, demonstrando o princípio da comunicação em redes distribuídas sem memória compartilhada.
+
+## Exemplo de execução do código via docker-compose:
+
+
+https://github.com/user-attachments/assets/bc58a199-01ce-49f6-8e67-10d4449bb5fe
+
+
 
 ## Considerações finais
 
