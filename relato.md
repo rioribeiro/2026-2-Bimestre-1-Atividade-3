@@ -186,11 +186,11 @@ func Principal() {
 }
 ```
 
-# Comportamento dos Processos Isolados
+### Comportamento dos Processos Isolados
 
 Ao contrário do cenário com Goroutines, o processo sequencial_app não consegue acessar a memória RAM do processo exemplo_main. O SO impede rigorosamente a leitura cruzada de memória entre processos sem mecanismos explícitos de IPC (Inter-Process Communication).
 
-# Saída da Execução Sequencial no Container Docker
+### Saída da Execução Sequencial no Container Docker
 
 sequencial-1           | iniciou
 sequencial-1           | recebeu -> 5786
@@ -198,34 +198,23 @@ sequencial-1           | finalizou
 
 A execução monothread dentro do processo garante que a produção termine totalmente antes do início do consumo, sendo 100% determinística.
 
-> texto explicando o código
-> mostrar o código completo
 
-FIXME
-> explicar como foi executado
-> mostrar as saídas do terminal
-> mostrar as saídas do terminal
+### Arquitetura de Rede e Contêineres
 
-FIXME
-> se houve problema na execução, enumerar os problemas e suas respectivas soluções
+Em sistemas distribuídos, processos rodando em computadores fisicamente separados não compartilham memória nem sistema de arquivos. No nosso ambiente, essa separação de nós é simulada pela infraestrutura do Docker Compose.
+Cada serviço (exemplo-main, sequencial, produtor-consumidor) roda em seu próprio Namespace de Rede isolado, simulando host/computadores distintos conectados por uma rede virtual (src_default).
 
-### Comunicação entre tarefas em processos diferentes em computadores diferentes
+```text
+[ Container: produtor-consumidor ] <--- Rede Virtual (Bridge) ---> [ Container: sequencial ]
+       (IP: 172.18.0.2)                  (src_default)                  (IP: 172.18.0.3)
+```
 
-FIXME
-> texto explicando o código
-> mostrar o código completo
+### Mecanismo de Comunicação de Rede
 
-FIXME
-> explicar como foi executado
-> mostrar as saídas do terminal
-> mostrar as saídas do terminal
-
-FIXME
-> se houve problema na execução, enumerar os problemas e suas respectivas soluções
+Para que tarefas em máquinas distintas troquem informações, a comunicação deve obrigatoriamente utilizar Sockets TCP/IP ou protocolos de aplicação sobre a placa de rede.
+No Docker Compose, a resolução de nomes via DNS interno permite que contêineres troquem pacotes de rede utilizando a ponte de rede do host, demonstrando o princípio da comunicação em redes distribuídas sem memória compartilhada.
 
 ## Considerações finais
 
-FIXME
-> conseguiu implementar tudo e executar?
-> qual foi o aprendizado nesse trabalho?
-> alguma recomendação para próximos alunos?
+- Conclusão Prática: Todos os módulos foram compilados e executados com sucesso em ambiente de contêineres Docker no Arch Linux.
+- Aprendizado Fundamental: A atividade permitiu vivenciar na prática a diferença entre o modelo monothread sequencial e o modelo concorrente multithread/Goroutines. A ocorrência da condição de corrida no terminal evidenciou a importância dos mecanismos de sincronização e exclusão mútua em Sistemas Operacionais.
