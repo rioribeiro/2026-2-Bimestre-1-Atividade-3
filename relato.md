@@ -13,8 +13,11 @@ O grupo de trabalho foi formado por Rio Ribeiro, João Victor, Wheverton Filho.
 ### Informações gerais
 
 > qual o objetivo de comunicação entre tarefas?
-> A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
+
+A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
+
 > explicar porque usar docker nesse trabalho.
+
 O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
 > qual a configuração do docker?
 ```
