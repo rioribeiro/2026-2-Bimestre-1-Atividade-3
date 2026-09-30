@@ -30,8 +30,8 @@ src/
     └── produtor_consumidor/
         └── main.go             <-- Executável concorrente (Goroutines)
 
-O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
 ```
+O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
 
 ```
 # Dockerfile
@@ -192,9 +192,11 @@ Ao contrário do cenário com Goroutines, o processo sequencial_app não consegu
 
 ### Saída da Execução Sequencial no Container Docker
 
+```
 sequencial-1           | iniciou
 sequencial-1           | recebeu -> 5786
 sequencial-1           | finalizou
+```
 
 A execução monothread dentro do processo garante que a produção termine totalmente antes do início do consumo, sendo 100% determinística.
 
@@ -202,6 +204,7 @@ A execução monothread dentro do processo garante que a produção termine tota
 ### Arquitetura de Rede e Contêineres
 
 Em sistemas distribuídos, processos rodando em computadores fisicamente separados não compartilham memória nem sistema de arquivos. No nosso ambiente, essa separação de nós é simulada pela infraestrutura do Docker Compose.
+
 Cada serviço (exemplo-main, sequencial, produtor-consumidor) roda em seu próprio Namespace de Rede isolado, simulando host/computadores distintos conectados por uma rede virtual (src_default).
 
 ```text
@@ -212,6 +215,7 @@ Cada serviço (exemplo-main, sequencial, produtor-consumidor) roda em seu própr
 ### Mecanismo de Comunicação de Rede
 
 Para que tarefas em máquinas distintas troquem informações, a comunicação deve obrigatoriamente utilizar Sockets TCP/IP ou protocolos de aplicação sobre a placa de rede.
+
 No Docker Compose, a resolução de nomes via DNS interno permite que contêineres troquem pacotes de rede utilizando a ponte de rede do host, demonstrando o princípio da comunicação em redes distribuídas sem memória compartilhada.
 
 ## Considerações finais
