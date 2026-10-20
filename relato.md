@@ -1,69 +1,232 @@
-# Relatório sobre implementação de comunicação entre tarefas em FIXME
+# Relatório sobre implementação de comunicação entre tarefas em Go
 
 ## Introdução
 
 Este relato faz parte do processo avaliativo da disciplina de sistemas operacionas no curso superior em análise e desenvolvimento de sistemas, ofertado na Diretoria acadêmica de gestão e tecnologia da informação no campus natal-central do instituto federal de educação, ciência e tecnologia do rio grande do norte.
 
-Tem como objetivo principal relatar as implementações de comunicação entre tarefas na linguagem FIXME.
+Tem como objetivo principal relatar as implementações de comunicação entre tarefas na linguagem Go.
 
-O grupo de trabalho foi formado por FIXME.
+O grupo de trabalho foi formado por Rio Ribeiro, João Victor, Wheverton Filho.
 
-## Comunicação entre tarefas em FIXME
+## Comunicação entre tarefas em Go
 
 ### Informações gerais
 
-FIXME
-> qual o objetivo de comunicação entre tarefas? 
+A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
 
-FIXME
-> explicar porque usar docker nesse trabalho.
-> qual a configuração do docker?
+### Arquitetura de Arquivos
+```text
+src/
+├── Dockerfile
+├── docker-compose.yml
+└── go/
+    ├── go.mod
+    ├── sequencial/
+    │   └── sequencial.go       <-- Pacote reusável
+    ├── exemplo_main/
+    │   └── main.go             <-- Executável de teste
+    ├── sequencial_app/
+    │   └── main.go             <-- Executável sequencial
+    └── produtor_consumidor/
+        └── main.go             <-- Executável concorrente (Goroutines)
 
-### Comunicação entre tarefas com linhas de execução no mesmo processo
+```
+O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
 
-FIXME
-> texto explicando o código
-> mostrar o código completo
+```
+# Dockerfile
 
-FIXME
-> explicar como foi executado
-> mostrar as saídas do terminal
-> mostrar as saídas do terminal
+FROM golang:1.22-alpine AS builder 
+WORKDIR /app 
+COPY go/go.mod ./
+COPY go/sequencial/ ./sequencial/
+COPY go/exemplo\_main/ ./exemplo\_main/
+COPY go/sequencial\_app/ ./sequencial\_app/
+COPY go/produtor\_consumidor/ ./produtor\_consumidor/
+RUN go build -o /app/bin/exemplo\_main ./exemplo\_main 
+RUN go build -o /app/bin/sequencial\_app ./sequencial\_app 
+RUN go build -o /app/bin/produtor\_consumidor ./produtor\_consumidor 
+FROM alpine:latest 
+WORKDIR /app 
+COPY --from=builder /app/bin /app/bin
+CMD ["/app/bin/produtor\_consumidor"]
 
-FIXME
-> se houve problema na execução, enumerar os problemas e suas respectivas soluções
+# docker-compose.yml
 
-### Comunicação entre tarefas em processos diferentes no mesmo computador
+services: 
+  exemplo-main: 
+    build: . 
+    command: /app/bin/exemplo\_main 
+    
+  sequencial: 
+    build: . 
+    command: /app/bin/sequencial\_app
+  produtor-consumidor:
+    build: .
+    command: /app/bin/produtor\_consumidor
+```
 
-FIXME
-> texto explicando o código
-> mostrar o código completo
+## Comunicação entre tarefas com linhas de execução no mesmo processo
 
-FIXME
-> explicar como foi executado
-> mostrar as saídas do terminal
-> mostrar as saídas do terminal
+Em Go, linhas de execução no mesmo processo são gerenciadas através de Goroutines (threads leves gerenciadas pelo runtime da linguagem). No arquivo src/go/produtor_consumidor/main.go, implementamos a comunicação entre o Produtor e o Consumidor através de uma variável global compartilhada (dados []int) e controlamos a conclusão das Goroutines via barreira de sincronização sync.WaitGroup.
+```
+package main
 
-FIXME
-> se houve problema na execução, enumerar os problemas e suas respectivas soluções
+import (
+	"fmt"
+	"math/rand"
+	"sync"
+	"time"
+)
 
-### Comunicação entre tarefas em processos diferentes em computadores diferentes
+var (
+	dados []int
+	wg    sync.WaitGroup
+)
 
-FIXME
-> texto explicando o código
-> mostrar o código completo
+func produzirDados() {
+	defer wg.Done()
+	fmt.Println("# produzir - iniciado")
 
-FIXME
-> explicar como foi executado
-> mostrar as saídas do terminal
-> mostrar as saídas do terminal
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	novosDados := make([]int, 100)
+	for i := 0; i < 100; i++ {
+		novosDados[i] = r.Intn(111)
+	}
+	dados = novosDados
 
-FIXME
-> se houve problema na execução, enumerar os problemas e suas respectivas soluções
+	fmt.Printf("# produzir %v\n", dados)
+	fmt.Println("# produzir - terminado")
+}
+
+func consumirDados() {
+	defer wg.Done()
+	fmt.Println("### consumir - iniciado")
+	fmt.Printf("### dados -> %v\n", dados)
+
+	soma := 0
+	for _, v := range dados {
+		soma += v
+	}
+
+	fmt.Printf("### resultado -> %d\n", soma)
+	fmt.Println("### consumir - terminado")
+}
+
+func main() {
+	fmt.Println("iniciou")
+
+	wg.Add(2)
+	go produzirDados()
+	go consumirDados()
+
+	wg.Wait()
+	fmt.Println("finalizou")
+}
+```
+
+A execução foi realizada via terminal dentro do diretório do módulo Go (src/go):
+```go run ./produtor_consumidor```
+Saída obtida no terminal:
+
+```
+Iniciou
+### consumir - iniciado
+### dados -> []
+### resultado -> 0
+### consumir - terminado
+# produzir - iniciado
+# produzir 
+# produzir - terminado
+finalizou
+```
+
+Problemas na execução e soluções:
+
+- Problema: Ocorreu uma Condição de Corrida (Race Condition). Como não havia mecanismos de exclusão mútua na memória compartilhada dados, a Goroutine consumirDados() executou antes que produzirDados() preenchesse o vetor. O consumidor leu um vetor vazio ([]) e resultou em soma 0.
+- Solução: Para evitar a condição de corrida no Go, o ideal é substituir a memória compartilhada global por Canais (chan []int) para transmissão síncrona de dados entre as Goroutines, ou aplicar um sync.Mutex ao redor do acesso à variável dados.
+
+## Comunicação entre tarefas em processos diferentes no mesmo computador
+
+Quando executamos os programas exemplo_main, sequencial_app e produtor_consumidor como aplicações independentes, o Sistema Operacional cria processos distintos na tabela de processos, cada um com seu próprio identificador (PID) e espaço de endereçamento protegido pela MMU (Unidade de Gerenciamento de Memória).
+
+No nosso projeto, a modularização foi feita via pacote sequencial (src/go/sequencial/sequencial.go), permitindo que diferentes processos utilizem a mesma lógica compilada:
+
+```
+package sequencial
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func ProduzirDados() []int {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	dados := make([]int, 100)
+	for i := 0; i < 100; i++ {
+		dados[i] = r.Intn(111)
+	}
+	return dados
+}
+
+func ConsumirDados(dados []int) {
+	resultado := 0
+	for _, v := range dados {
+		resultado += v
+	}
+	fmt.Printf("recebeu -> %d\n", resultado)
+}
+
+func Principal() {
+	fmt.Println("iniciou")
+	dados := ProduzirDados()
+	ConsumirDados(dados)
+	fmt.Println("finalizou")
+}
+```
+
+### Comportamento dos Processos Isolados
+
+Ao contrário do cenário com Goroutines, o processo sequencial_app não consegue acessar a memória RAM do processo exemplo_main. O SO impede rigorosamente a leitura cruzada de memória entre processos sem mecanismos explícitos de IPC (Inter-Process Communication).
+
+### Saída da Execução Sequencial no Container Docker
+
+```
+sequencial-1           | iniciou
+sequencial-1           | recebeu -> 5786
+sequencial-1           | finalizou
+```
+
+A execução monothread dentro do processo garante que a produção termine totalmente antes do início do consumo, sendo 100% determinística.
+
+## Comunicação entre tarefas em processos diferentes em computadores diferentes
+
+### Arquitetura de Rede e Contêineres
+
+Em sistemas distribuídos, processos rodando em computadores fisicamente separados não compartilham memória nem sistema de arquivos. No nosso ambiente, essa separação de nós é simulada pela infraestrutura do Docker Compose.
+
+Cada serviço (exemplo-main, sequencial, produtor-consumidor) roda em seu próprio Namespace de Rede isolado, simulando host/computadores distintos conectados por uma rede virtual (src_default).
+
+```text
+[ Container: produtor-consumidor ] <--- Rede Virtual (Bridge) ---> [ Container: sequencial ]
+       (IP: 172.18.0.2)                  (src_default)                  (IP: 172.18.0.3)
+```
+
+### Mecanismo de Comunicação de Rede
+
+Para que tarefas em máquinas distintas troquem informações, a comunicação deve obrigatoriamente utilizar Sockets TCP/IP ou protocolos de aplicação sobre a placa de rede.
+
+No Docker Compose, a resolução de nomes via DNS interno permite que contêineres troquem pacotes de rede utilizando a ponte de rede do host, demonstrando o princípio da comunicação em redes distribuídas sem memória compartilhada.
+
+## Exemplo de execução do código via docker-compose:
+
+
+https://github.com/user-attachments/assets/bc58a199-01ce-49f6-8e67-10d4449bb5fe
+
+
 
 ## Considerações finais
 
-FIXME
-> conseguiu implementar tudo e executar?
-> qual foi o aprendizado nesse trabalho?
-> alguma recomendação para próximos alunos?
+- Conclusão Prática: Todos os módulos foram compilados e executados com sucesso em ambiente de contêineres Docker no Arch Linux.
+- Aprendizado Fundamental: A atividade permitiu vivenciar na prática a diferença entre o modelo monothread sequencial e o modelo concorrente multithread/Goroutines. A ocorrência da condição de corrida no terminal evidenciou a importância dos mecanismos de sincronização e exclusão mútua em Sistemas Operacionais.

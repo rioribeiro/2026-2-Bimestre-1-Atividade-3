@@ -1,0 +1,4 @@
+FROM golang:1.22-alpine
+WORKDIR /app
+COPY consumidor.go .
+CMD ["go", "run", "consumidor.go"]
