@@ -1,0 +1,4 @@
+FROM golang:1.22-alpine
+WORKDIR /app
+COPY produtor.go .
+CMD ["go", "run", "produtor.go"]
