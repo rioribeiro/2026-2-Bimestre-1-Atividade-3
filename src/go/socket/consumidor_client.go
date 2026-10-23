@@ -1,6 +1,6 @@
-packpage main
+package main
 
-import(
+import (
 	"bufio"
 	"fmt"
 	"net"
@@ -11,7 +11,7 @@ import(
 )
 
 func main() {
-	// O nome do host 'produtor-host' será resolvido pelo DNS do Docker host := os Getenv ("PRODUTOR-HOST")
+	host := os.Getenv("PRODUTOR_HOST")
 	if host == "" {
 		host = "produtor-host"
 	}
@@ -20,10 +20,9 @@ func main() {
 
 	fmt.Printf("### [Cliente/Consumidor] Tentando conectar ao produtor em %s\n", endereco)
 
-	var conn net.conn
+	var conn net.Conn
 	var err error
 
-	// Tenta reconectar caso o servidor ainda esteja inicializado 
 	for i := 0; i < 10; i++ {
 		conn, err = net.Dial("tcp", endereco)
 		if err == nil {
@@ -37,7 +36,6 @@ func main() {
 	}
 	defer conn.Close()
 
-	// Lê a resposta enviada pelo servidor
 	leitor := bufio.NewReader(conn)
 	resposta, err := leitor.ReadString('\n')
 	if err != nil {
@@ -46,10 +44,9 @@ func main() {
 	}
 
 	fmt.Printf("### [Cliente/Consumidor] Dados recebidos via Socket -> %s", resposta)
-	// Trata a String "[1 2 3 ...]" de volta para números inteiros e calcula a soma
 	limpo := strings.TrimSpace(resposta)
-	limpo := strings.TrimPrefix(limpo, "[")
-	limpo := strings.TrimSuffix(limpo, "]")
+	limpo = strings.TrimPrefix(limpo, "[")
+	limpo = strings.TrimSuffix(limpo, "]")
 
 	partes := strings.Fields(limpo)
 	resultado := 0

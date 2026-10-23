@@ -1,5 +1,5 @@
 services:
- pordutor-host:
+ produtor-host:
   build: .
   container_name: conteiner_produtor
   command: go run produtor_server.go
