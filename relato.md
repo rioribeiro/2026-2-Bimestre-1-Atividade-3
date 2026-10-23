@@ -158,8 +158,8 @@ func main() {
 #### 📥 Execução do Código via Docker:
 
 ```
-docker build -t app-go-mesmo-processo .
-docker run --rm app-go-mesmo-processo
+sudo docker build -t app-go-mesmo-processo .
+sudo docker run --rm app-go-mesmo-processo
 ```
 
 **Saída no terminal do contêiner:** 
@@ -391,7 +391,7 @@ networks:
 
 #### 📥 Execução do Código via Docker Compose:
 
-```bash docker-compose up --build ```
+```sudo docker-compose up --build ```
 
 **Saída do terminal do contêiner:** 
 ``` 
