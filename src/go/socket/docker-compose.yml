@@ -1,0 +1,23 @@
+services:
+ pordutor-host:
+  build: .
+  container_name: conteiner_produtor
+  command: go run produtor_server.go
+  ports:
+   - "5000:5000"
+  networks:
+   - rede_ipc
+ 
+ consumidor-host:
+  build: .
+  container_name: container_consumidor
+  command: go run consumidor_client.go
+  environment:
+   - PRODUTOR_HOST=produtor-host
+  depends_on:
+   - produtor-host
+  networks:
+   - rede_ipc
+networks:
+ rede_ipc:
+  driver: bridge
