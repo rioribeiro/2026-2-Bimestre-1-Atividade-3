@@ -166,7 +166,8 @@ docker run --rm app-go-mesmo-processo
 ```
 iniciou 
 # Produzir - iniciado 
-# produzir [34 93 93 68 40 37 95 91 ...] # produzir - terminado 
+# produzir [34 93 93 68 40 37 95 91 ...] 
+# produzir - terminado 
 ### Consumir - iniciado 
 ### Dados -> [34 93 93 68 40 37 95 91 ...]
 ### Resultado -> 5786 
