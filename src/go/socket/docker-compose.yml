@@ -10,7 +10,7 @@ services:
  
  consumidor-host:
   build: .
-  container_name: container_consumidor
+  container_name: conteiner_consumidor
   command: go run consumidor_client.go
   environment:
    - PRODUTOR_HOST=produtor-host

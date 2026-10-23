@@ -1,232 +1,425 @@
-# Relatório sobre implementação de comunicação entre tarefas em Go
+# Relatório de Implementação de Comunicação entre Tarefas em Go
 
-## Introdução
+## 📌 Introdução
 
-Este relato faz parte do processo avaliativo da disciplina de sistemas operacionas no curso superior em análise e desenvolvimento de sistemas, ofertado na Diretoria acadêmica de gestão e tecnologia da informação no campus natal-central do instituto federal de educação, ciência e tecnologia do rio grande do norte.
+Este relato faz parte do processo avaliativo da disciplina de **Sistemas Operacionais** no curso superior de **Tecnologia em Análise e Desenvolvimento de Sistemas**, ofertado pela **Diretoria Acadêmica de Gestão e Tecnologia da Informação** do **Campus Natal-Central** do **Instituto Federal de Educação, Ciência e Tecnologia do Rio Grande do Norte (**IFRN**)**.
 
-Tem como objetivo principal relatar as implementações de comunicação entre tarefas na linguagem Go.
+O objetivo principal deste trabalho é relatar e demonstrar as implementações de **comunicação entre tarefas** na linguagem **Go**.
 
-O grupo de trabalho foi formado por Rio Ribeiro, João Victor, Wheverton Filho.
+## 👥 Equipe de Desenvolvimento
 
-## Comunicação entre tarefas em Go
+- **Rio Ribeiro**
+- **Wheverton Filho**
 
-### Informações gerais
+---
 
-A comunicação e a coordenação entre tarefas (sejam processos ou *threads/goroutines*) têm como objetivo permitir a troca de dados, a sincronização do fluxo de execução e a cooperação para resolver problemas complexos. Em Sistemas Operacionais, ela permite dividir uma aplicação grande em submódulos que executam concorrentemente, garantindo o compartilhamento controlado de recursos (como memória e arquivos) e evitando inconsistências causadas por acessos simultâneos não protegidos.
+## ⚙️ Comunicação entre Tarefas em Go
 
-### Arquitetura de Arquivos
-```text
-src/
-├── Dockerfile
-├── docker-compose.yml
-└── go/
-    ├── go.mod
-    ├── sequencial/
-    │   └── sequencial.go       <-- Pacote reusável
-    ├── exemplo_main/
-    │   └── main.go             <-- Executável de teste
-    ├── sequencial_app/
-    │   └── main.go             <-- Executável sequencial
-    └── produtor_consumidor/
-        └── main.go             <-- Executável concorrente (Goroutines)
+### 💡 Informações Gerais
 
-```
-O uso do **Docker** garante a portabilidade e a reprodutibilidade do ambiente de execução entre todos os membros do grupo e o professor. Ele isola as dependências do sistema operacional hospedeiro, garantindo que o código rode exatamente na mesma versão do Go (1.22-alpine), eliminando inconsistências de ambiente.
+A comunicação entre tarefas (***IPC** - Inter-Process Communication* ou comunicação inter-goroutines) tem como objetivo permitir que diferentes fluxos de execução troquem dados, sincronizem suas operações e cooperem para resolver um problema em comum. Em arquiteturas baseadas no padrão **Produtor-Consumidor**, essa abordagem possibilita a separação de responsabilidades entre a geração de dados e seu processamento.
 
-```
-# Dockerfile
+### 🐳 Uso e Configuração do Docker
 
-FROM golang:1.22-alpine AS builder 
-WORKDIR /app 
-COPY go/go.mod ./
-COPY go/sequencial/ ./sequencial/
-COPY go/exemplo\_main/ ./exemplo\_main/
-COPY go/sequencial\_app/ ./sequencial\_app/
-COPY go/produtor\_consumidor/ ./produtor\_consumidor/
-RUN go build -o /app/bin/exemplo\_main ./exemplo\_main 
-RUN go build -o /app/bin/sequencial\_app ./sequencial\_app 
-RUN go build -o /app/bin/produtor\_consumidor ./produtor\_consumidor 
-FROM alpine:latest 
-WORKDIR /app 
-COPY --from=builder /app/bin /app/bin
-CMD ["/app/bin/produtor\_consumidor"]
+O uso do **Docker** neste trabalho garante a padronização do ambiente de execução entre os membros da equipe e na avaliação do professor. O contêiner isola o ambiente da linguagem Go (`golang:1.22-alpine`), garantindo que limitações de sistema operacional, variáveis de ambiente ou diferenças de versão não interferiram na criação e no agendamento de Goroutines e processos.
 
-# docker-compose.yml
+---
 
-services: 
-  exemplo-main: 
-    build: . 
-    command: /app/bin/exemplo\_main 
-    
-  sequencial: 
-    build: . 
-    command: /app/bin/sequencial\_app
-  produtor-consumidor:
-    build: .
-    command: /app/bin/produtor\_consumidor
-```
+## 🛠️ Relato de Desenvolvimento e Implementações
 
-## Comunicação entre tarefas com linhas de execução no mesmo processo
+### 🧵 1. Comunicação entre Tarefas no Mesmo Processo (Linhas de Execução)
 
-Em Go, linhas de execução no mesmo processo são gerenciadas através de Goroutines (threads leves gerenciadas pelo runtime da linguagem). No arquivo src/go/produtor_consumidor/main.go, implementamos a comunicação entre o Produtor e o Consumidor através de uma variável global compartilhada (dados []int) e controlamos a conclusão das Goroutines via barreira de sincronização sync.WaitGroup.
-```
+A comunicação entre tarefas dentro do mesmo processo em Go ocorre por meio de **Goroutines** (threads leves gerenciadas pelo runtime da linguagem), que compartilham o mesmo espaço de endereçamento de memória **RAM**. Nos códigos implementados, essa integração foi demonstrada em três cenários graduais:
+
+- **Chamada Direta de Fluxo (`exemplo.go`):** Execução sequencial de funções sem transferência de estado.
+- **Troca por Parâmetros e Retornos (`sequencial.go`):** A comunicação ocorre pela passagem de fatias de memória (*slices*) através do fluxo único de controle.
+- **Memória Compartilhada (`produtor_consumidor.go`):** Múltiplas Goroutines concorrentes acessam e alteram uma variável global comum (`dados []int`), com sincronização controlada via `sync.WaitGroup`.
+
+#### 💻 Códigos Implementados:
+
+1. **Chamada Direta de Fluxo (`exemplo.go`)**
+```go
 package main
 
-import (
-	"fmt"
-	"math/rand"
-	"sync"
-	"time"
-)
-
-var (
-	dados []int
-	wg    sync.WaitGroup
-)
+import *fmt*
 
 func produzirDados() {
-	defer wg.Done()
-	fmt.Println("# produzir - iniciado")
-
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	novosDados := make([]int, 100)
-	for i := 0; i < 100; i++ {
-		novosDados[i] = r.Intn(111)
-	}
-	dados = novosDados
-
-	fmt.Printf("# produzir %v\n", dados)
-	fmt.Println("# produzir - terminado")
-}
-
-func consumirDados() {
-	defer wg.Done()
-	fmt.Println("### consumir - iniciado")
-	fmt.Printf("### dados -> %v\n", dados)
-
-	soma := 0
-	for _, v := range dados {
-		soma += v
-	}
-
-	fmt.Printf("### resultado -> %d\n", soma)
-	fmt.Println("### consumir - terminado")
+	fmt.Println(*Dados produzidos*)
 }
 
 func main() {
-	fmt.Println("iniciou")
-
-	wg.Add(2)
-	go produzirDados()
-	go consumirDados()
-
-	wg.Wait()
-	fmt.Println("finalizou")
+	produzirDados()
 }
 ```
 
-A execução foi realizada via terminal dentro do diretório do módulo Go (src/go):
-```go run ./produtor_consumidor```
-Saída obtida no terminal:
-
-```
-Iniciou
-### consumir - iniciado
-### dados -> []
-### resultado -> 0
-### consumir - terminado
-# produzir - iniciado
-# produzir 
-# produzir - terminado
-finalizou
-```
-
-Problemas na execução e soluções:
-
-- Problema: Ocorreu uma Condição de Corrida (Race Condition). Como não havia mecanismos de exclusão mútua na memória compartilhada dados, a Goroutine consumirDados() executou antes que produzirDados() preenchesse o vetor. O consumidor leu um vetor vazio ([]) e resultou em soma 0.
-- Solução: Para evitar a condição de corrida no Go, o ideal é substituir a memória compartilhada global por Canais (chan []int) para transmissão síncrona de dados entre as Goroutines, ou aplicar um sync.Mutex ao redor do acesso à variável dados.
-
-## Comunicação entre tarefas em processos diferentes no mesmo computador
-
-Quando executamos os programas exemplo_main, sequencial_app e produtor_consumidor como aplicações independentes, o Sistema Operacional cria processos distintos na tabela de processos, cada um com seu próprio identificador (PID) e espaço de endereçamento protegido pela MMU (Unidade de Gerenciamento de Memória).
-
-No nosso projeto, a modularização foi feita via pacote sequencial (src/go/sequencial/sequencial.go), permitindo que diferentes processos utilizem a mesma lógica compilada:
-
-```
-package sequencial
+2. **Comunicação por Parâmetro e Retorno (`sequencial.go`)**
+```go
+package main
 
 import (
-	"fmt"
-	"math/rand"
-	"time"
+	*fmt*
+	*math/rand*
+	*time*
 )
 
-func ProduzirDados() []int {
+func produzirDados() []int {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	dados := make([]int, 100)
-	for i := 0; i < 100; i++ {
-		dados[i] = r.Intn(111)
+	dados := make([]int, **100**)
+	for i := 0; i < **100**; i++ {
+		dados[i] = r.Intn(**111**)
 	}
 	return dados
 }
 
-func ConsumirDados(dados []int) {
+func consumirDados(dados []int) {
 	resultado := 0
-	for _, v := range dados {
-		resultado += v
+	for _, num := range dados {
+		resultado += num
 	}
-	fmt.Printf("recebeu -> %d\n", resultado)
+	fmt.Printf(*Recebeu -> %d\n*, resultado)
 }
 
-func Principal() {
-	fmt.Println("iniciou")
-	dados := ProduzirDados()
-	ConsumirDados(dados)
-	fmt.Println("finalizou")
+func principal() {
+	fmt.Println(*Iniciou*)
+	dados := produzirDados()
+	consumirDados(dados)
+	fmt.Println(*Finalizou*)
+}
+
+func main() {
+	principal()
 }
 ```
 
-### Comportamento dos Processos Isolados
+3. **Comunicação Concorrente via Memória Compartilhada (`produtor_consumidor.go`)**
+```go
+package main
 
-Ao contrário do cenário com Goroutines, o processo sequencial_app não consegue acessar a memória RAM do processo exemplo_main. O SO impede rigorosamente a leitura cruzada de memória entre processos sem mecanismos explícitos de IPC (Inter-Process Communication).
+import (
+	*fmt*
+	*math/rand*
+	*sync*
+	*time*
+)
 
-### Saída da Execução Sequencial no Container Docker
+var dados []int
+
+func produzirDados(wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Println(*# Produzir - iniciado*)
+
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	novosDados := make([]int, **100**)
+	for i := 0; i < **100**; i++ {
+		novosDados[i] = r.Intn(**111**)
+	}
+
+	dados = novosDados
+
+	fmt.Printf(*# produzir %v\n*, dados)
+	fmt.Println(*# produzir - terminado*)
+}
+
+func consumirDados(wg *sync.WaitGroup) {
+	defer wg.Done()
+	fmt.Println(*### Consumir - iniciado*)
+	fmt.Printf(*### Dados -> %v\n*, dados)
+
+	resultado := 0
+	for _, num := range dados {
+		resultado += num
+	}
+
+	fmt.Printf(*### Resultado -> %d\n*, resultado)
+	fmt.Println(*### Consumir - terminado*)
+}
+
+func principal() {
+	fmt.Println(*iniciou*)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go produzirDados(&wg)
+	wg.Wait()
+
+	wg.Add(1)
+	go consumirDados(&wg)
+	wg.Wait()
+
+	fmt.Println(*Finalizou*)
+}
+
+func main() {
+	principal()
+}
+```
+
+#### 📥 Execução do Código via Docker:
 
 ```
-sequencial-1           | iniciou
-sequencial-1           | recebeu -> 5786
-sequencial-1           | finalizou
+sudo docker build -t app-go-mesmo-processo .
+sudo docker run --rm app-go-mesmo-processo
 ```
 
-A execução monothread dentro do processo garante que a produção termine totalmente antes do início do consumo, sendo 100% determinística.
-
-## Comunicação entre tarefas em processos diferentes em computadores diferentes
-
-### Arquitetura de Rede e Contêineres
-
-Em sistemas distribuídos, processos rodando em computadores fisicamente separados não compartilham memória nem sistema de arquivos. No nosso ambiente, essa separação de nós é simulada pela infraestrutura do Docker Compose.
-
-Cada serviço (exemplo-main, sequencial, produtor-consumidor) roda em seu próprio Namespace de Rede isolado, simulando host/computadores distintos conectados por uma rede virtual (src_default).
-
-```text
-[ Container: produtor-consumidor ] <--- Rede Virtual (Bridge) ---> [ Container: sequencial ]
-       (IP: 172.18.0.2)                  (src_default)                  (IP: 172.18.0.3)
+**Saída no terminal do contêiner:** 
+```
+iniciou 
+# Produzir - iniciado 
+# produzir [34 93 93 68 40 37 95 91 ...] 
+# produzir - terminado 
+### Consumir - iniciado 
+### Dados -> [34 93 93 68 40 37 95 91 ...]
+### Resultado -> 5786 
+### Consumir - terminado 
+Finalizou 
 ```
 
-### Mecanismo de Comunicação de Rede
+#### ⚠️ Desafios Encontrados e Soluções:
 
-Para que tarefas em máquinas distintas troquem informações, a comunicação deve obrigatoriamente utilizar Sockets TCP/IP ou protocolos de aplicação sobre a placa de rede.
+1. **Condição de Corrida (*Race Condition*):**
+    * **Problema:** Ao disparar Goroutines simultâneas sem sincronização, a Goroutine consumidora tentava ler a variável global `dados` antes que o produtor tivesse terminado de preenchê-la.
+    * **Solução:** Uso do mecanismo de barreira de sincronização `sync.WaitGroup` com a instrução `wg.Wait()`, garantindo a ordem correta de execução.
 
-No Docker Compose, a resolução de nomes via DNS interno permite que contêineres troquem pacotes de rede utilizando a ponte de rede do host, demonstrando o princípio da comunicação em redes distribuídas sem memória compartilhada.
+---
 
-## Exemplo de execução do código via docker-compose:
+### 💻 2. Comunicação entre Tarefas em Processos Diferentes no Mesmo Computador (Pipe)
 
+Nesta etapa, o padrão é adaptado para executar a produção e o consumo em **processos completamente isolados** no Sistema Operacional.
+- **Isolamento de Memória:** Cada processo possui seu próprio espaço de endereçamento protegido pelo SO.
+- **Mecanismo via Pipe (`|`):** A comunicação é feita redirecionando a saída padrão (*stdout*) do processo produtor para a entrada padrão (*stdin*) do processo consumidor.
 
-https://github.com/user-attachments/assets/bc58a199-01ce-49f6-8e67-10d4449bb5fe
+#### 💻 Códigos Implementados:
 
+1. **Produtor (`produtor.go`)**
+```go
+package main
 
+import *fmt*
 
-## Considerações finais
+func main() {
+	fmt.Println(*Dados produzidos e enviados via Pipe de SO*)
+}
+```
 
-- Conclusão Prática: Todos os módulos foram compilados e executados com sucesso em ambiente de contêineres Docker no Arch Linux.
-- Aprendizado Fundamental: A atividade permitiu vivenciar na prática a diferença entre o modelo monothread sequencial e o modelo concorrente multithread/Goroutines. A ocorrência da condição de corrida no terminal evidenciou a importância dos mecanismos de sincronização e exclusão mútua em Sistemas Operacionais.
+2. **Consumidor (`consumidor.go`)**
+```go
+package main
+
+import (
+	*bufio*
+	*fmt*
+	*os*
+)
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		fmt.Println(*Entrada recebida no Consumidor ->*, scanner.Text())
+	}
+}
+```
+
+#### 📥 Execução do Código via Docker:
+
+```bash 
+sudo docker build -f Dockerfile.produtor -t app-produtor . 
+sudo docker build -f Dockerfile.consumidor -t app-consumidor .
+sudo docker run --rm app-produtor | sudo docker run -i --rm app-consumidor
+```
+
+**Saída no terminal do contêiner:** 
+``` 
+Entrada recebida no Consumidor -> Dados produzidos e enviados via Pipe de SO 
+```
+
+#### ⚠️ Desafios Encontrados e Soluções:
+
+1. **Perda da Entrada Padrão no Contêiner Consumidor:**
+    * **Problema:** O contêiner Docker do consumidor por padrão não mantinha a entrada interativa aberta para ler dados do pipe.
+    * **Solução:** Uso obrigatório da flag `-i` no comando `docker run -i`, mantendo o fluxo `stdin` aberto para receber o fluxo de dados do produtor.
+
+---
+
+### 🌐 3. Comunicação entre Tarefas em Computadores/Contêineres Diferentes (Sockets TCP)
+
+Para evoluir a arquitetura para um ambiente distribuído, o código foi dividido em dois programas independentes que se comunicam através da pilha de protocolos **TCP**/IP:
+- **`produtor_server.go` (Servidor Socket):** Atua como o nó gerador de dados, abrindo uma porta de rede **TCP** (`**5000**`) e aguardando conexões.
+- **`consumidor_client.go` (Cliente Socket):** Conecta-se ao hostname do produtor via socket, consome a stream de bytes transmitida via rede, realiza o parsing do vetor e calcula a soma.
+- **Orquestração com Docker Compose:** Gerencia a rede virtual (`bridge`) conectando os dois contêineres e resolvendo os nomes via **DNS** interno do Docker.
+
+#### 💻 Código Implementado:
+
+1. **Contêiner A (`produtor_server.go`)**
+```go
+package main
+
+import (
+	*fmt*
+	*math/rand*
+	*net*
+	*time*
+)
+
+func produzirDados() []int {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	novosDados := make([]int, **100**)
+	for i := 0; i < **100**; i++ {
+		novosDados[i] = r.Intn(**111**)
+	}
+	return novosDados
+}
+
+func main() {
+	porta := *:**5000***
+	fmt.Println("# [Servidor/Produtor] Aguardando conexões na porta **5000**...*)
+
+	listener, err := net.Listen(*tcp", porta)
+	if err != nil {
+		return
+	}
+	defer listener.Close()
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			continue
+		}
+
+		fmt.Printf(*# [Servidor/Produtor] Consumidor conectado: %s\n*, conn.RemoteAddr().String())
+
+		dados := produzirDados()
+		mensagem := fmt.Sprintf(*%v\n*, dados)
+
+		conn.Write([]byte(mensagem))
+		fmt.Printf("# [Servidor/Produtor] Dados enviados via Socket: %v\n", dados)
+		conn.Close()
+	}
+}
+```
+
+2. **Contêiner B (`consumidor_client.go`)**
+```go
+package main
+
+import (
+	*bufio*
+	*fmt*
+	*net*
+	*os*
+	*strconv*
+	*strings*
+	*time*
+)
+
+func main() {
+	host := os.Getenv(*PRODUTOR_HOST*)
+	if host == "* {
+		host = *produtor-host*
+	}
+	porta := *5000*
+	endereco := fmt.Sprintf(*%s:%s*, host, porta)
+
+	fmt.Printf(*### [Cliente/Consumidor] Tentando conectar ao produtor em %s\n", endereco)
+
+	var conn net.Conn
+	var err error
+
+	for i := 0; i < 10; i++ {
+		conn, err = net.Dial(*tcp*, endereco)
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	leitor := bufio.NewReader(conn)
+	resposta, _ := leitor.ReadString('\n')
+
+	fmt.Printf("### [Cliente/Consumidor] Dados recebidos via Socket -> %s", resposta)
+
+	limpo := strings.TrimSpace(resposta)
+	limpo = strings.TrimPrefix(limpo, *[*)
+	limpo = strings.TrimSuffix(limpo, *]*)
+
+	partes := strings.Fields(limpo)
+	resultado := 0
+
+	for _, p := range partes {
+		val, err := strconv.Atoi(p)
+		if err == nil {
+			resultado += val
+		}
+	}
+
+	fmt.Printf(*### [Cliente/Consumidor] Resultado da Soma -> %d\n*, resultado)
+}
+```
+
+3. **Orquestração (`docker-compose.yml`)**
+```yaml
+services:
+    produtor-host:
+    build: .
+    container_name: conteiner_produtor
+    command: go run produtor_server.go
+    ports:
+    - ***5000**:**5000***
+    networks:
+    - rede_ipc
+
+    consumidor-host:
+    build: .
+    container_name: conteiner_consumidor
+    command: go run consumidor_client.go
+    environment:
+    - PRODUTOR_HOST=produtor-host
+    depends_on:
+    - produtor-host
+    networks:
+    - rede_ipc
+
+networks:
+    rede_ipc:
+    driver: bridge
+```
+
+#### 📥 Execução do Código via Docker Compose:
+
+```sudo docker-compose up --build ```
+
+**Saída do terminal do contêiner:** 
+``` 
+conteiner_produtor  | # [Servidor/Produtor] Aguardando conexões na porta 5000...
+conteiner_consumidor  | ### [Cliente/Consumidor] Tentando conectar ao produtor em produtor-host:5000
+conteiner_produtor    | # [Servidor/Produtor] Consumidor conectado: 172.19.0.3:37034
+conteiner_produtor    | # [Servidor/Produtor] Dados enviados via Socket: [15 100 49 108 2 32 35 93 54 ...]
+conteiner_consumidor  | ### [Cliente/Consumidor] Dados recebidos via Socket -> [15 100 49 108 2 32 35 93 54 ...]
+conteiner_consumidor  | ### [Cliente/Consumidor] Resultado da Soma -> 5233
+conteiner_consumidor exited with code 0
+```
+
+#### ⚠️ Desafios Encontrados e Soluções:
+
+1. **Ordem de Inicialização dos Contêineres:**
+    * **Problema:** O consumidor tentava conectar via Socket antes do servidor aceitar conexões **TCP**.
+    * **Solução:** Implementação de um laço de tentativa de reconexão (`retry loop` com `time.Sleep`) no cliente Go e diretiva `depends_on` no Compose.
+2. **Serialização e Parsing do Fluxo de Bytes:**
+    * **Problema:** A rede transmite os dados como fluxo de bytes (`[]byte`).
+    * **Solução:** Formatação da fatia em string no servidor e reconstrução dos valores numéricos com `strings.Fields` e `strconv.Atoi` no cliente.
+
+---
+
+## 🏁 Considerações Finais
+
+A realização deste trabalho permitiu vivenciar, de forma prática e incremental, a evolução das abordagens de Comunicação entre Tarefas em Go:
+
+1. **Memória Compartilhada no Mesmo Processo:** Alta performance, porém exige atenção rigorosa ao controle de concorrência com Goroutines e travas para evitar condições de corrida.
+2. **Processos Isolados no Mesmo Computador:** Garante o isolamento completo de memória pelo SO, utilizando Pipes para redirecionamento do fluxo de dados.
+3. **Rede Distribuída com Sockets:** Abstrai a dependência de memória local e habilita a arquitetura em microsserviços via Docker Compose.
+
