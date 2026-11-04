@@ -415,6 +415,14 @@ conteiner_consumidor exited with code 0
 
 ---
 
+
+https://github.com/user-attachments/assets/d213e122-0135-4ed0-9083-f82565e8d065
+
+https://github.com/user-attachments/assets/efbf16f7-9d80-4f9c-83d8-a7b21cb52433
+
+https://github.com/user-attachments/assets/ff2d2204-df1c-46b6-ac9e-53e2a97479d1
+
+
 ## 🏁 Considerações Finais
 
 A realização deste trabalho permitiu vivenciar, de forma prática e incremental, a evolução das abordagens de Comunicação entre Tarefas em Go:
